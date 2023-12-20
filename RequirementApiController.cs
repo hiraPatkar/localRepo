@@ -49,51 +49,72 @@ namespace Requirement_API.Controllers
             //return seq;
 
 
-            string data = "";
-            string npgCommand = SD.Proc_Get_Next_Seq_No;
-
-            string? ConnString = _configuration.GetConnectionString("DefaultConnection");
-
-            using (var conn = new NpgsqlConnection(ConnString))
+            try
             {
-                conn.Open();
-                using (var command = new NpgsqlCommand(npgCommand, conn))
-                {
-                    NpgsqlDataReader dr = command.ExecuteReader();
+                string seqNumber = "";
+                string npgCommand = SD.Proc_Get_Next_Seq_No;
 
-                    while (dr.Read())
+                string? connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    using (var command = new NpgsqlCommand(npgCommand, connection))
                     {
-                        data = dr[0].ToString();
+                        NpgsqlDataReader dataReader = command.ExecuteReader();
+
+                        while (dataReader.Read())
+                        {
+                            seqNumber = dataReader[0].ToString();
+                        }
                     }
                 }
-            }
 
-            return long.Parse(data);
+                return long.Parse(seqNumber);
+            }
+            catch (Exception ex)
+            {
+                string actionName = this.ControllerContext.RouteData.Values["action"].ToString();
+                string controllerName = this.ControllerContext.RouteData.Values["controller"].ToString();
+                _logger.LogError(ex, $"Path: {controllerName + "/" + actionName}\n" + ex.Message);
+                throw;
+            }
         }
 
 
         //codeComment.method.ValidateInputObject.description = "function to validate input object"
         public List<string> ValidateInputObject()
         {
-            var errorList = new List<string>();
-            if (!ModelState.IsValid)
+            try
             {
-                var errors = new List<string>();
-                foreach (var state in ModelState)
+                var errorList = new List<string>();
+                if (!ModelState.IsValid)
                 {
-                    foreach (var error in state.Value.Errors)
+                    var errors = new List<string>();
+                    foreach (var state in ModelState)
                     {
-                        errors.Add(error.ErrorMessage);
+                        foreach (var error in state.Value.Errors)
+                        {
+                            errors.Add(error.ErrorMessage);
+                        }
                     }
+
+                    errorList = errors;
+                    return errorList;
                 }
 
-                errorList = errors;
-                return errorList;
+                else
+                {
+                    return errorList;
+                }
             }
-
-            else
+            catch (Exception ex)
             {
-                return errorList;
+                string actionName = this.ControllerContext.RouteData.Values["action"].ToString();
+                string controllerName = this.ControllerContext.RouteData.Values["controller"].ToString();
+                _logger.LogError(ex, $"Path: {controllerName + "/" + actionName}\n" + ex.Message);
+
+                throw;
             }
         }
 
@@ -237,13 +258,13 @@ namespace Requirement_API.Controllers
 
         //codeComment.method.UpdateRequirementSectionAndDetails.description = "helper function to update requirement details to db"
         //[Authorize(Roles = "Execute")]
-        public bool UpdateRequirementSectionAndDetails(UpdateObject updateRequirementsObj)
+        public bool UpdateRequirementSectionAndDetails(UpdateObject parUpdateRequirementsObj)
         {
             try
             {
-                RequirementSectionObject requirementSectionObject = updateRequirementsObj.RequirementSectionObject;
+                RequirementSectionObject requirementSectionObject = parUpdateRequirementsObj.RequirementSectionObject;
 
-                ReqSection recordFromDb = updateRequirementsObj.ReqSectionRecord;
+                ReqSection recordFromDb = parUpdateRequirementsObj.ReqSectionRecord;
 
                 //Updating data in Maintenance Execution Table
                 if (requirementSectionObject.StatusChangeDate != null)
